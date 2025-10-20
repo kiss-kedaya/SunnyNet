@@ -15,31 +15,39 @@ SunnyNet 是一个强大的 Python 网络中间件库，提供 HTTP/HTTPS、TCP�
 
 ## 安装
 
-### 自动安装（推荐）
+### 方法 1: 一键安装（推荐，全局可用）
+
+```bash
+# 安装 Python 包
+pip install SunnyNet
+
+# 安装库文件到全局目录（类似 playwright install）
+sunnynet install
+# 或简写
+sunnynet i
+```
+
+**优点**：
+- ✅ 全局安装，所有项目都能使用
+- ✅ 类似 Playwright 的使用体验
+- ✅ Windows 安装到 `%APPDATA%\SunnyNet\lib`
+- ✅ Linux/Mac 安装到 `~/.sunnynet/lib`
+
+### 方法 2: 自动安装（项目级别）
 
 ```bash
 pip install SunnyNet
 ```
 
-安装时会**自动检测操作系统**并下载对应的库文件：
-- ✅ **Windows**: 自动安装 `SunnyNet64.dll`
-- ✅ **Linux**: 自动下载 `SunnyNet64.so`
-- ✅ **macOS**: 自动下载 `SunnyNet64.dylib`
+安装时会**自动下载**库文件到包目录（仅当前虚拟环境可用）
 
-### 手动下载（可选）
-
-如果自动下载失败，可以手动下载：
+### 查看安装信息
 
 ```bash
-# 方法 1: 使用命令行工具
-sunnynet-download
-
-# 方法 2: 作为模块运行
-python -m SunnyNet.download_libs
-
-# 方法 3: 指定自定义下载地址
-sunnynet-download --url https://your-url.com/SunnyNet64.so --force
+sunnynet info
 ```
+
+显示库文件安装位置和状态。
 
 ### 离线安装
 
@@ -232,6 +240,31 @@ MIT License
 - QQ 群: 751406884
 
 ## 更新日志
+
+### v1.3.3 (2025-10-20)
+- 🚀 **新增 GitHub 镜像加速支持**（解决国内下载问题）
+- 📊 **改进下载进度显示**（显示进度条和文件大小）
+- 🔄 **自动切换镜像源**（支持 6 个镜像站，自动重试）
+- ⚡ **优化下载体验**（更快、更稳定）
+- 💡 **更友好的错误提示**（提供手动下载指引）
+
+### v1.3.2 (2025-10-20)
+- 🐛 **修复 CLI 模块循环依赖问题**
+- ✅ CLI 工具可独立运行，不触发 DLL 加载
+
+### v1.3.1 (2025-10-20)
+- 🐛 **修复命令行工具加载问题**
+- ✅ 优化库文件延迟加载机制
+- 🔧 修复 `pyproject.toml` 配置，确保命令行工具正确安装
+- 💡 改进错误提示，引导用户使用 `sunnynet install`
+
+### v1.3.0 (2025-10-20)
+- 🎯 **新增 CLI 命令行工具**（类似 Playwright）
+- ✨ 支持 `sunnynet install` 全局安装库文件
+- 🌍 库文件全局可用，所有项目共享
+- 📍 Windows: `%APPDATA%\SunnyNet\lib`
+- 📍 Linux/Mac: `~/.sunnynet/lib`
+- 🔍 新增 `sunnynet info` 查看安装状态
 
 ### v1.2.0 (2025-10-20)
 - 🚀 **使用 GitHub Releases 下载库文件**（无文件大小限制）

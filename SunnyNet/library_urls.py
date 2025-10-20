@@ -7,7 +7,7 @@ SunnyNet 库文件下载地址配置
 
 # GitHub 仓库配置
 GITHUB_REPO = "kiss-kedaya/SunnyNet"
-RELEASE_VERSION = "v1.2.0"  # 发布版本号
+RELEASE_VERSION = "v1.3.3"  # 发布版本号
 
 # 使用 GitHub Releases 下载（适合大文件，无大小限制）
 # 格式: https://github.com/{user}/{repo}/releases/download/{version}/{filename}

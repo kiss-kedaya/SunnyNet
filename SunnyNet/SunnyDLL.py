@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 import struct
 import ctypes
 from ctypes import *
@@ -10,6 +12,17 @@ __RuntimeEnvironment = struct.calcsize("P") * 8 == 64
 
 # 获取当前模块所在目录
 __module_dir = os.path.dirname(os.path.abspath(__file__))
+
+# 全局变量
+lib = None
+TcpCallback = None
+HttpCallback = None
+WsCallback = None
+UDPCallback = None
+ScriptLogCallback = None
+ScriptCodeCallback = None
+_library_loaded = False
+_library_error = None
 
 
 def _get_library_path():
@@ -31,8 +44,17 @@ def _get_library_path():
     else:
         raise OSError(f"不支持的操作系统: {system}")
 
-    # 尝试多个可能的路径
+    # 获取全局库目录（优先级最高）
+    if system == "windows":
+        base = os.environ.get("APPDATA", os.path.expanduser("~"))
+        global_dir = os.path.join(base, "SunnyNet", "lib")
+    else:
+        # Linux/Mac
+        global_dir = os.path.join(os.path.expanduser("~"), ".sunnynet", "lib")
+
+    # 尝试多个可能的路径（按优先级排序）
     possible_paths = [
+        os.path.join(global_dir, lib_name),  # 全局目录（最高优先级）
         os.path.join(__module_dir, lib_name),  # 包目录下
         os.path.join(os.getcwd(), lib_name),  # 当前工作目录
         os.path.join(os.getcwd(), "SunnyNet", lib_name),  # 当前目录下的SunnyNet子目录
@@ -47,93 +69,123 @@ def _get_library_path():
     return possible_paths[0]
 
 
-try:
-    # 获取库文件路径
-    lib_path = _get_library_path()
+def _load_library():
+    """延迟加载库文件（仅在实际使用时加载）"""
+    global \
+        lib, \
+        TcpCallback, \
+        HttpCallback, \
+        WsCallback, \
+        UDPCallback, \
+        ScriptLogCallback, \
+        ScriptCodeCallback
+    global _library_loaded, _library_error
 
-    # 加载共享库
-    lib = CDLL(lib_path)
+    if _library_loaded:
+        return lib is not None
 
-    if __RuntimeEnvironment:
-        # 64位环境 - Go语言回调函数声明
-        TcpCallback = CFUNCTYPE(
-            None,
-            c_int64,
-            c_char_p,
-            c_char_p,
-            c_int64,
-            c_int64,
-            c_int64,
-            c_int64,
-            c_int64,
-            c_int64,
-        )
-        HttpCallback = CFUNCTYPE(
-            None,
-            c_int64,
-            c_int64,
-            c_int64,
-            c_int64,
-            c_char_p,
-            c_char_p,
-            c_char_p,
-            c_int64,
-        )
-        WsCallback = CFUNCTYPE(
-            None,
-            c_int64,
-            c_int64,
-            c_int64,
-            c_int64,
-            c_char_p,
-            c_char_p,
-            c_int64,
-            c_int64,
-        )
-        UDPCallback = CFUNCTYPE(
-            None, c_int64, c_char_p, c_char_p, c_int64, c_int64, c_int64, c_int64
-        )
-        ScriptLogCallback = CFUNCTYPE(None, c_char_p)
-        ScriptCodeCallback = CFUNCTYPE(None, c_char_p, c_int64)
-    else:
-        # 32位环境 - Go语言回调函数声明
-        TcpCallback = CFUNCTYPE(
-            None, c_int, c_char_p, c_char_p, c_int, c_int, c_int, c_int, c_int, c_int
-        )
-        HttpCallback = CFUNCTYPE(
-            None, c_int, c_int, c_int, c_int, c_char_p, c_char_p, c_char_p, c_int
-        )
-        WsCallback = CFUNCTYPE(
-            None, c_int, c_int, c_int, c_int, c_char_p, c_char_p, c_int, c_int
-        )
-        UDPCallback = CFUNCTYPE(
-            None, c_int, c_char_p, c_char_p, c_int, c_int, c_int, c_int
-        )
-        ScriptLogCallback = CFUNCTYPE(None, c_char_p)
-        ScriptCodeCallback = CFUNCTYPE(None, c_char_p, c_int)
+    _library_loaded = True
 
-except Exception as e:
-    print(f"载入库文件失败: {e}")
-    print(f"当前操作系统: {platform.system()}")
-    print(f"当前架构: {'64位' if __RuntimeEnvironment else '32位'}")
-    print(f"尝试加载: {lib_path if 'lib_path' in locals() else '未知路径'}")
-    print("\n提示:")
-    if platform.system().lower() == "linux":
-        print("  - Linux系统需要 .so 文件 (例如: SunnyNet64.so)")
-        print("  - 请确保库文件存在于以下位置之一:")
-        print(f"    1. {__module_dir}")
-        print(f"    2. {os.getcwd()}")
-        print("  - 如果库文件不存在，请联系开发者获取Linux版本")
-    elif platform.system().lower() == "darwin":
-        print("  - macOS系统需要 .dylib 文件 (例如: SunnyNet64.dylib)")
-    else:
-        print("  - Windows系统需要 .dll 文件 (例如: SunnyNet64.dll)")
-    exit(1)
+    try:
+        # 获取库文件路径
+        lib_path = _get_library_path()
+
+        # 加载共享库
+        lib = CDLL(lib_path)
+
+        if __RuntimeEnvironment:
+            # 64位环境 - Go语言回调函数声明
+            TcpCallback = CFUNCTYPE(
+                None,
+                c_int64,
+                c_char_p,
+                c_char_p,
+                c_int64,
+                c_int64,
+                c_int64,
+                c_int64,
+                c_int64,
+                c_int64,
+            )
+            HttpCallback = CFUNCTYPE(
+                None,
+                c_int64,
+                c_int64,
+                c_int64,
+                c_int64,
+                c_char_p,
+                c_char_p,
+                c_char_p,
+                c_int64,
+            )
+            WsCallback = CFUNCTYPE(
+                None,
+                c_int64,
+                c_int64,
+                c_int64,
+                c_int64,
+                c_char_p,
+                c_char_p,
+                c_int64,
+                c_int64,
+            )
+            UDPCallback = CFUNCTYPE(
+                None, c_int64, c_char_p, c_char_p, c_int64, c_int64, c_int64, c_int64
+            )
+            ScriptLogCallback = CFUNCTYPE(None, c_char_p)
+            ScriptCodeCallback = CFUNCTYPE(None, c_char_p, c_int64)
+        else:
+            # 32位环境 - Go语言回调函数声明
+            TcpCallback = CFUNCTYPE(
+                None,
+                c_int,
+                c_char_p,
+                c_char_p,
+                c_int,
+                c_int,
+                c_int,
+                c_int,
+                c_int,
+                c_int,
+            )
+            HttpCallback = CFUNCTYPE(
+                None, c_int, c_int, c_int, c_int, c_char_p, c_char_p, c_char_p, c_int
+            )
+            WsCallback = CFUNCTYPE(
+                None, c_int, c_int, c_int, c_int, c_char_p, c_char_p, c_int, c_int
+            )
+            UDPCallback = CFUNCTYPE(
+                None, c_int, c_char_p, c_char_p, c_int, c_int, c_int, c_int
+            )
+            ScriptLogCallback = CFUNCTYPE(None, c_char_p)
+            ScriptCodeCallback = CFUNCTYPE(None, c_char_p, c_int)
+
+        return True
+
+    except Exception as e:
+        _library_error = e
+        print(f"载入库文件失败: {e}")
+        print(f"当前操作系统: {platform.system()}")
+        print(f"当前架构: {'64位' if __RuntimeEnvironment else '32位'}")
+        print(f"尝试加载: {lib_path if 'lib_path' in locals() else '未知路径'}")
+        print("\n提示:")
+        if platform.system().lower() == "linux":
+            print("  - Linux系统需要 .so 文件")
+            print("  - 请运行以下命令安装: python -m SunnyNet.cli install")
+        elif platform.system().lower() == "darwin":
+            print("  - macOS系统需要 .dylib 文件")
+            print("  - 请运行以下命令安装: python -m SunnyNet.cli install")
+        else:
+            print("  - Windows系统需要 .dll 文件")
+            print("  - 请运行以下命令安装: python -m SunnyNet.cli install")
+        return False
 
 
 # 这个类 是动态加载DLL时 设置返回值为指针
 class LibSunny:
     def __getattr__(self, name):
+        if not _load_library():
+            raise RuntimeError(f"库文件未加载: {_library_error}")
         func = getattr(lib, name)
         func.restype = ctypes.POINTER(ctypes.c_int)
         return func
@@ -204,14 +256,11 @@ def BytesToText(buff) -> str:
 
 # 指针到字节数组 (DLL协商的前8个字节是长度)
 def PointerToBytes(ptr) -> bytearray:
-    if ptr == 0:
+    siz = PtrToInt(ptr)
+    if siz == 0:
         return bytearray()
-    lp = PtrToByte(ptr, 0, 8)
-    if len(lp) != 8:
-        return lp
-    Lxp = PtrToInt(DLLSunny.BytesToInt(create_string_buffer(lp), 8))
-    m = PtrToByte(ptr, 8, Lxp)
+    buf = PtrToByte(ptr, 8, siz)
     DLLSunny.Free(
         ptr
     )  # 释放Sunny的指针,只要是Sunny返回的bytes 或 string 都需要释放指针
-    return m
+    return buf
