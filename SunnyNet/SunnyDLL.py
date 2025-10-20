@@ -24,7 +24,8 @@ def _get_library_path():
     if system == "windows":
         lib_name = "SunnyNet64.dll" if is_64bit else "SunnyNet.dll"
     elif system == "linux":
-        lib_name = "SunnyNet64.so" if is_64bit else "SunnyNet.so"
+        # Linux 文件名为 libSunnyNet.so
+        lib_name = "libSunnyNet.so"
     elif system == "darwin":  # macOS
         lib_name = "SunnyNet64.dylib" if is_64bit else "SunnyNet.dylib"
     else:

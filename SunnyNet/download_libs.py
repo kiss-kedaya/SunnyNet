@@ -38,7 +38,8 @@ def get_library_filename():
     if system == "windows":
         return "SunnyNet64.dll" if is_64bit else "SunnyNet.dll"
     elif system == "linux":
-        return "SunnyNet64.so" if is_64bit else "SunnyNet.so"
+        # Linux 文件名为 libSunnyNet.so (不区分32/64位)
+        return "libSunnyNet.so"
     elif system == "darwin":
         return "SunnyNet64.dylib" if is_64bit else "SunnyNet.dylib"
     else:
@@ -125,36 +126,66 @@ def download_library(force=False):
         print(f"\n✗ 不支持的操作系统: {system}")
         return False
 
-    # 获取下载地址
-    url = LIBRARY_URLS.get(platform_key)
-    if not url:
-        print(f"\n✗ 未配置该平台的下载地址: {platform_key}")
-        print(f"\n提示: 请手动下载 {lib_filename} 并放置到 SunnyNet 包目录")
-        return False
-
     # 获取安装目录
     install_dir = get_install_dir()
     dest_path = install_dir / lib_filename
 
     print(f"\n安装目录: {install_dir}")
 
-    # 检查文件是否已存在
-    if dest_path.exists() and not force:
+    # 检查本地文件是否已存在
+    if dest_path.exists():
         print(f"\n✓ 库文件已存在: {dest_path}")
         file_size = dest_path.stat().st_size
         print(f"  文件大小: {file_size:,} 字节")
+        if not force:
+            print("✓ 跳过下载")
+            return True
 
-        response = input("\n是否重新下载? (y/N): ").strip().lower()
+    # 获取下载地址
+    url = LIBRARY_URLS.get(platform_key)
+    if not url or url is None:
+        print(f"\n⚠️  该平台暂未提供自动下载: {platform_key}")
+        print(f"\n提示:")
+        print(f"  1. 请手动下载 {lib_filename}")
+        print(f"  2. 将文件放置到: {install_dir}")
+        print(f"  3. 或联系开发者获取该平台版本")
+        print(f"\nQQ 群: 751406884, 545120699, 170902713, 616787804")
+        print(f"官网: https://esunny.vip")
+        return False
+
+    # 如果强制下载，询问用户
+    if dest_path.exists() and force:
+        response = input("\n文件已存在，是否重新下载? (y/N): ").strip().lower()
         if response != "y":
-            print("跳过下载")
+            print("取消下载")
             return True
 
     # 确保目录存在
     install_dir.mkdir(parents=True, exist_ok=True)
 
-    # 下载文件
+    # 下载文件（可能需要临时文件名）
     print()
-    success = download_file(url, dest_path)
+
+    # 检查 URL 中的文件名（用于 GitHub Releases）
+    url_filename = url.split("/")[-1]
+
+    # 如果 URL 文件名和本地文件名不同，先下载到临时位置
+    if url_filename != lib_filename:
+        temp_path = install_dir / url_filename
+        success = download_file(url, temp_path)
+
+        if success:
+            # 重命名为最终文件名
+            try:
+                if dest_path.exists():
+                    dest_path.unlink()
+                temp_path.rename(dest_path)
+                print(f"✓ 文件已重命名为: {lib_filename}")
+            except Exception as e:
+                print(f"⚠ 重命名失败: {e}")
+                return False
+    else:
+        success = download_file(url, dest_path)
 
     if success:
         # 在 Linux/Mac 上设置执行权限
