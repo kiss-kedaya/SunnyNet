@@ -24,7 +24,6 @@ GITHUB_MIRRORS = [
     "https://gh-proxy.com",  # gh-proxy
     "https://ghproxy.com",  # ghproxy
     "https://gh.ddlc.top",  # ddlc
-    "https://ghps.cc",  # ghps
     "https://cdn.gh-proxy.com",  # cdn gh-proxy
 ]
 

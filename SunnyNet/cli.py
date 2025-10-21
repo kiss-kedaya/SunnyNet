@@ -34,16 +34,21 @@ def install_command(args):
 
     # 手动实现必要的函数，避免导入 download_libs（它会导入 SunnyDLL）
     def get_platform_key():
+        import struct
+
         system = platform.system().lower()
-        # 使用 sys.maxsize 更可靠地检测 Python 位数
-        is_64bit = sys.maxsize > 2**31
+        # 使用 struct.calcsize("P") 检测 Python 位数（最可靠的方法）
+        # P = 指针大小，8字节=64位，4字节=32位
+        is_64bit = struct.calcsize("P") == 8
         arch = "64" if is_64bit else "32"
         return f"{system}_{arch}"
 
     def get_library_filename():
+        import struct
+
         system = platform.system().lower()
-        # 使用 sys.maxsize 更可靠地检测 Python 位数
-        is_64bit = sys.maxsize > 2**31
+        # 使用 struct.calcsize("P") 检测 Python 位数
+        is_64bit = struct.calcsize("P") == 8  # 8字节 = 64位
         if system == "windows":
             return "SunnyNet64.dll" if is_64bit else "SunnyNet.dll"
         elif system == "linux":
