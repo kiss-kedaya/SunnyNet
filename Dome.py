@@ -247,10 +247,18 @@ def TestMultiPortWithFixedCert():
     import os
 
     # ============ 步骤1: 准备固定证书 ============
-    # 定义证书文件保存路径（保存在当前目录下）
+    # 定义证书文件保存路径（使用绝对路径，确保每次都保存在同一位置）
     # 使用 P12 格式，这是标准的证书打包格式
-    cert_p12_file = "sunny_cert.p12"  # P12 证书文件（包含公钥、私钥和CA证书）
+
+    # 获取脚本所在目录的绝对路径
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    cert_p12_file = os.path.join(script_dir, "sunny_cert.p12")  # P12 证书文件
     cert_password = "sunny2025"  # P12 证书密码
+
+    print(f"\n[证书配置]")
+    print(f"  证书文件路径: {cert_p12_file}")
+    print(f"  证书密码: {cert_password}")
+    print(f"  当前工作目录: {os.getcwd()}")
 
     # 创建证书管理器
     cert_manager = CertManager()
@@ -258,16 +266,33 @@ def TestMultiPortWithFixedCert():
     # 检查 P12 证书文件是否已存在
     if os.path.exists(cert_p12_file):
         # 如果证书文件已存在，则从文件加载（使用固定证书）
-        print("=" * 60)
+        print("\n" + "=" * 60)
         print("检测到已有证书文件，正在加载固定证书...")
         print("=" * 60)
 
-        # 从 P12 文件加载证书
-        cert_manager.load_p12(cert_p12_file, cert_password)
-        print(f"✓ 成功从 {cert_p12_file} 加载固定证书")
-    else:
+        try:
+            # 从 P12 文件加载证书
+            cert_manager.load_p12(cert_p12_file, cert_password)
+
+            # 验证证书是否成功加载
+            common_name = cert_manager.get_common_name()
+            print(f"✓ 成功从 {os.path.basename(cert_p12_file)} 加载固定证书")
+            print(f"  证书通用名称: {common_name}")
+            print(f"  文件大小: {os.path.getsize(cert_p12_file)} 字节")
+        except Exception as e:
+            print(f"✗ 加载证书失败: {e}")
+            print("  将重新创建证书...")
+            # 如果加载失败，删除旧证书并重新创建
+            try:
+                os.remove(cert_p12_file)
+            except:
+                pass
+            # 继续执行创建证书的逻辑
+            os.path.exists(cert_p12_file)  # 重新检查（这里会是 False）
+
+    if not os.path.exists(cert_p12_file):
         # 如果证书文件不存在，则创建新证书并保存到文件
-        print("=" * 60)
+        print("\n" + "=" * 60)
         print("未检测到证书文件，正在创建新证书...")
         print("=" * 60)
 
@@ -277,17 +302,33 @@ def TestMultiPortWithFixedCert():
         # - country: 国家代码（默认 CN）
         # - organization: 组织名称（默认 Sunny）
         # - not_after: 有效期天数（默认 3650 天，即 10 年）
+        print("  正在生成证书...")
         if not cert_manager.create("SunnyProxy"):
             print("✗ 证书创建失败")
             return
 
+        print("  证书创建成功，正在保存...")
+
         # 将证书导出为 P12 格式并保存到文件
-        if cert_manager.export_p12(cert_p12_file, cert_password):
-            print(f"✓ 证书已创建并保存为 P12 格式")
-            print(f"  - 文件: {cert_p12_file}")
-            print(f"  - 密码: {cert_password}")
+        export_result = cert_manager.export_p12(cert_p12_file, cert_password)
+
+        print(f"  导出函数返回: {export_result}")
+
+        # 再次验证文件是否真的被保存
+        if os.path.exists(cert_p12_file):
+            file_size = os.path.getsize(cert_p12_file)
+            print(f"✓ 证书已成功创建并保存为 P12 格式")
+            print(f"  - 文件路径: {cert_p12_file}")
+            print(f"  - 文件大小: {file_size} 字节")
+            print(f"  - 证书密码: {cert_password}")
+
+            if file_size == 0:
+                print("✗ 警告：文件大小为 0，可能保存失败")
+                return
         else:
-            print("✗ 证书保存失败")
+            print(f"✗ 证书保存失败：文件不存在")
+            print(f"  - 预期路径: {cert_p12_file}")
+            print(f"  - 导出结果: {export_result}")
             return
 
     print()

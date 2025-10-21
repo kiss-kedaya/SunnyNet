@@ -81,7 +81,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="SunnyNet",
-    version="1.5.13",
+    version="1.5.14",
     author="秦天",
     author_email="",
     description="SunnyNet网络中间件 - 强大的网络代理和抓包工具",
