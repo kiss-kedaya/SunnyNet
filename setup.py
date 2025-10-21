@@ -1,7 +1,6 @@
 from setuptools import setup, find_packages
 from setuptools.command.install import install
 from setuptools.command.develop import develop
-import os
 import sys
 import subprocess
 
@@ -12,14 +11,38 @@ class PostInstallCommand(install):
     def run(self):
         install.run(self)
         # 安装完成后尝试下载库文件
+        # 仅在实际pip install时执行，构建wheel时跳过
+        import os
+
+        # 检测是否在wheel构建过程中
+        if "bdist_wheel" in sys.argv or os.environ.get("PIP_BUILD_TRACKER"):
+            # wheel构建过程，跳过
+            print("\n[提示] 首次使用前请运行: sunnynet install")
+            return
+
+        # 检查是否在交互式终端中
+        try:
+            if not sys.stdin.isatty():
+                print("\n[提示] 首次使用前请运行: sunnynet install")
+                return
+        except:
+            # 某些环境可能不支持isatty()
+            print("\n[提示] 首次使用前请运行: sunnynet install")
+            return
+
         try:
             print("\n" + "=" * 60)
             print("正在下载平台相关的库文件...")
             print("=" * 60)
-            subprocess.check_call([sys.executable, "-m", "SunnyNet.download_libs"])
+            # 尝试使用 sunnynet install 命令
+            try:
+                subprocess.check_call(["sunnynet", "install"])
+            except (subprocess.CalledProcessError, FileNotFoundError):
+                # 如果 sunnynet 命令不可用，使用模块方式调用
+                subprocess.check_call([sys.executable, "-m", "SunnyNet.cli", "install"])
         except Exception as e:
             print(f"\n[!] Auto-download library failed: {e}")
-            print("Please run manually: python -m SunnyNet.download_libs")
+            print("Please run manually: sunnynet install")
 
 
 class PostDevelopCommand(develop):
@@ -27,11 +50,29 @@ class PostDevelopCommand(develop):
 
     def run(self):
         develop.run(self)
+        # 检查是否在交互式终端中
+        import os
+
+        # 检查是否在交互式终端中
+        try:
+            if not sys.stdin.isatty():
+                print("\n[提示] 首次使用前请运行: sunnynet install")
+                return
+        except:
+            print("\n[提示] 首次使用前请运行: sunnynet install")
+            return
+
         try:
             print("\n正在下载平台相关的库文件...")
-            subprocess.check_call([sys.executable, "-m", "SunnyNet.download_libs"])
+            # 尝试使用 sunnynet install 命令
+            try:
+                subprocess.check_call(["sunnynet", "install"])
+            except (subprocess.CalledProcessError, FileNotFoundError):
+                # 如果 sunnynet 命令不可用，使用模块方式调用
+                subprocess.check_call([sys.executable, "-m", "SunnyNet.cli", "install"])
         except Exception as e:
             print(f"\n[!] Auto-download library failed: {e}")
+            print("Please run manually: sunnynet install")
 
 
 # 读取README文件
@@ -40,7 +81,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="SunnyNet",
-    version="1.4.0",
+    version="1.5.8",
     author="秦天",
     author_email="",
     description="SunnyNet网络中间件 - 强大的网络代理和抓包工具",

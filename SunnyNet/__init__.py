@@ -10,7 +10,7 @@ from .CertManager import CertManager
 from .Queue import Queue
 from . import TCPTools, UDPTools, WebsocketTools, tools
 
-__version__ = "1.3.3"
+__version__ = "1.4.0"
 __author__ = "秦天"
 
 __all__ = [
