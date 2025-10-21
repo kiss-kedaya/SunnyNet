@@ -18,8 +18,8 @@ class PostInstallCommand(install):
             print("=" * 60)
             subprocess.check_call([sys.executable, "-m", "SunnyNet.download_libs"])
         except Exception as e:
-            print(f"\n⚠ 自动下载库文件失败: {e}")
-            print("请手动运行: python -m SunnyNet.download_libs")
+            print(f"\n[!] Auto-download library failed: {e}")
+            print("Please run manually: python -m SunnyNet.download_libs")
 
 
 class PostDevelopCommand(develop):
@@ -31,7 +31,7 @@ class PostDevelopCommand(develop):
             print("\n正在下载平台相关的库文件...")
             subprocess.check_call([sys.executable, "-m", "SunnyNet.download_libs"])
         except Exception as e:
-            print(f"\n⚠ 自动下载库文件失败: {e}")
+            print(f"\n[!] Auto-download library failed: {e}")
 
 
 # 读取README文件
@@ -40,7 +40,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="SunnyNet",
-    version="1.3.3",
+    version="1.4.0",
     author="秦天",
     author_email="",
     description="SunnyNet网络中间件 - 强大的网络代理和抓包工具",

@@ -1,11 +1,11 @@
 Metadata-Version: 2.4
 Name: SunnyNet
-Version: 1.3.3
+Version: 1.4.0
 Summary: SunnyNet网络中间件 - 强大的网络代理和抓包工具
 Home-page: https://github.com/yourusername/SunnyNet
 Author: 秦天
 Author-email: 
-License: MIT
+License-Expression: MIT
 Project-URL: Homepage, https://github.com/yourusername/SunnyNet
 Project-URL: Bug Reports, https://github.com/yourusername/SunnyNet/issues
 Project-URL: Source, https://github.com/yourusername/SunnyNet
@@ -16,8 +16,9 @@ Classifier: Programming Language :: Python :: 3.8
 Classifier: Programming Language :: Python :: 3.9
 Classifier: Programming Language :: Python :: 3.10
 Classifier: Programming Language :: Python :: 3.11
-Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3.12
 Classifier: Operating System :: Microsoft :: Windows
+Classifier: Operating System :: POSIX :: Linux
 Classifier: Development Status :: 4 - Beta
 Classifier: Intended Audience :: Developers
 Classifier: Topic :: Internet :: Proxy Servers

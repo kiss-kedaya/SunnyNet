@@ -31,18 +31,19 @@ def install_command(args):
     """安装库文件到全局目录"""
     # 延迟导入，避免触发 SunnyNet 主模块加载 DLL
     import platform
-    import struct
 
     # 手动实现必要的函数，避免导入 download_libs（它会导入 SunnyDLL）
     def get_platform_key():
         system = platform.system().lower()
-        is_64bit = struct.calcsize("P") * 8 == 64
+        # 使用 sys.maxsize 更可靠地检测 Python 位数
+        is_64bit = sys.maxsize > 2**31
         arch = "64" if is_64bit else "32"
         return f"{system}_{arch}"
 
     def get_library_filename():
         system = platform.system().lower()
-        is_64bit = struct.calcsize("P") * 8 == 64
+        # 使用 sys.maxsize 更可靠地检测 Python 位数
+        is_64bit = sys.maxsize > 2**31
         if system == "windows":
             return "SunnyNet64.dll" if is_64bit else "SunnyNet.dll"
         elif system == "linux":
@@ -76,8 +77,8 @@ def install_command(args):
     url = download_libs.LIBRARY_URLS.get(platform_key)
 
     if not url or url is None:
-        print(f"\n⚠️  该平台暂未提供自动下载")
-        print(f"请手动下载 {lib_filename} 并放置到: {global_dir}")
+        print(f"\n[!] Platform not supported for auto-download")
+        print(f"Please manually download {lib_filename} and place to: {global_dir}")
         return 1
 
     # 创建目录
@@ -87,11 +88,11 @@ def install_command(args):
     dest_path = global_dir / lib_filename
 
     if dest_path.exists() and not args.force:
-        print(f"\n✓ 库文件已存在: {dest_path}")
+        print(f"\n[+] Library file exists: {dest_path}")
 
         response = input("\n是否重新下载? (y/N): ").strip().lower()
         if response != "y":
-            print("跳过下载")
+            print("Skip download")
             return 0
 
     print(f"\n开始下载...")
@@ -101,24 +102,24 @@ def install_command(args):
 
     if success:
         print("\n" + "=" * 60)
-        print("✓ 库文件安装成功!")
+        print("[+] Library file installed successfully!")
         print("=" * 60)
         print(f"\n安装位置: {dest_path}")
         print(f"\n现在可以在任何项目中使用 SunnyNet 了！")
         return 0
     else:
-        print("\n✗ 安装失败")
+        print("\n[-] Installation failed")
         return 1
 
 
 def info_command(args):
     """显示安装信息"""
     import platform
-    import struct
 
     def get_library_filename():
         system = platform.system().lower()
-        is_64bit = struct.calcsize("P") * 8 == 64
+        # 使用 sys.maxsize 更可靠地检测 Python 位数
+        is_64bit = sys.maxsize > 2**31
         if system == "windows":
             return "SunnyNet64.dll" if is_64bit else "SunnyNet.dll"
         elif system == "linux":
@@ -146,11 +147,11 @@ def info_command(args):
 
     if global_lib.exists():
         size = global_lib.stat().st_size / 1024 / 1024
-        print(f"\n✓ 库文件已安装")
+        print(f"\n[+] Library file installed")
         print(f"  位置: {global_lib}")
         print(f"  大小: {size:.2f} MB")
     else:
-        print(f"\n✗ 库文件未安装")
+        print(f"\n[-] Library file not installed")
         print(f"\n运行以下命令安装:")
         print(f"  sunnynet install")
 
@@ -165,9 +166,9 @@ def info_command(args):
 
         if package_lib.exists():
             size = package_lib.stat().st_size / 1024 / 1024
-            print(f"✓ 包目录也有库文件 ({size:.2f} MB)")
+            print(f"[+] Package directory also has library file ({size:.2f} MB)")
         else:
-            print(f"✗ 包目录没有库文件")
+            print(f"[-] Package directory does not have library file")
     except:
         pass
 

@@ -8,7 +8,6 @@ SunnyNet 库文件自动下载脚本
 import os
 import sys
 import platform
-import struct
 import urllib.request
 import ssl
 import time
@@ -60,7 +59,8 @@ LIBRARY_URLS = {
 def get_platform_key():
     """获取当前平台的标识符"""
     system = platform.system().lower()
-    is_64bit = struct.calcsize("P") * 8 == 64
+    # 使用 sys.maxsize 更可靠地检测 Python 位数
+    is_64bit = sys.maxsize > 2**31
     arch = "64" if is_64bit else "32"
     return f"{system}_{arch}"
 
@@ -68,7 +68,8 @@ def get_platform_key():
 def get_library_filename():
     """获取当前平台需要的库文件名"""
     system = platform.system().lower()
-    is_64bit = struct.calcsize("P") * 8 == 64
+    # 使用 sys.maxsize 更可靠地检测 Python 位数
+    is_64bit = sys.maxsize > 2**31
 
     if system == "windows":
         return "SunnyNet64.dll" if is_64bit else "SunnyNet.dll"
@@ -130,24 +131,24 @@ def test_all_mirrors(filename):
     Returns:
         list: 按速度排序的镜像列表（最快的在前）
     """
-    print("\n🔍 正在检测镜像节点速度...")
+    print("\n[*] Detecting mirror node speed...")
     print("=" * 60)
 
     results = []
     for mirror in GITHUB_MIRRORS:
         mirror_name = mirror.replace("https://", "")
-        print(f"测试节点: {mirror_name:<30}", end=" ", flush=True)
+        print(f"Testing: {mirror_name:<30}", end=" ", flush=True)
 
         speed = test_mirror_speed(mirror, filename, timeout=8)
 
         if speed != float("inf"):
-            print(f"✓ {speed * 1000:.0f} ms")
+            print(f"OK {speed * 1000:.0f} ms")
             results.append((mirror, speed))
         else:
-            print("✗ 超时或失败")
+            print("FAILED or timeout")
 
     if not results:
-        print("\n⚠️  所有节点检测失败，将使用默认顺序")
+        print("\n[!] All nodes failed, using default order")
         return GITHUB_MIRRORS
 
     # 按速度排序
@@ -156,7 +157,7 @@ def test_all_mirrors(filename):
 
     print("=" * 60)
     print(
-        f"✓ 最快节点: {sorted_mirrors[0].replace('https://', '')} ({results[0][1] * 1000:.0f} ms)"
+        f"[+] Fastest node: {sorted_mirrors[0].replace('https://', '')} ({results[0][1] * 1000:.0f} ms)"
     )
     print()
 
@@ -222,13 +223,13 @@ def download_file(url, dest_path, show_progress=True, timeout=30):
 
         if show_progress:
             print()  # 换行
-        print(f"✓ 下载完成")
+        print("[+] Download completed")
         return True
 
     except Exception as e:
         if show_progress:
             print()  # 确保错误信息在新行
-        print(f"✗ 下载失败: {e}")
+        print(f"[-] Download failed: {e}")
         return False
 
 
@@ -266,13 +267,13 @@ def download_file_with_mirrors(filename, dest_path, show_progress=True):
         if i < len(sorted_mirrors):
             print("\n正在尝试下一个镜像...")
 
-    print(f"\n✗ 所有镜像都下载失败")
-    print(f"\n💡 您也可以手动下载:")
+    print(f"\n[-] All mirrors failed")
+    print(f"\n[!] You can also download manually:")
     print(
-        f"   1. 访问: https://github.com/{GITHUB_REPO}/releases/tag/{RELEASE_VERSION}"
+        f"   1. Visit: https://github.com/{GITHUB_REPO}/releases/tag/{RELEASE_VERSION}"
     )
-    print(f"   2. 下载: {filename}")
-    print(f"   3. 放置到: {dest_path.parent}")
+    print(f"   2. Download: {filename}")
+    print(f"   3. Place to: {dest_path.parent}")
     return False
 
 
@@ -302,9 +303,9 @@ def download_library_to_path(url, dest_path, lib_filename):
                 if dest_path.exists():
                     dest_path.unlink()
                 temp_path.rename(dest_path)
-                print(f"✓ 文件已重命名为: {lib_filename}")
+                print(f"[+] File renamed to: {lib_filename}")
             except Exception as e:
-                print(f"⚠ 重命名失败: {e}")
+                print(f"[!] Rename failed: {e}")
                 return False
     else:
         success = download_file_with_mirrors(url_filename, dest_path)
@@ -314,9 +315,9 @@ def download_library_to_path(url, dest_path, lib_filename):
         if platform.system().lower() in ["linux", "darwin"]:
             try:
                 os.chmod(dest_path, 0o755)
-                print(f"✓ 已设置执行权限")
+                print(f"[+] Execution permission set")
             except Exception as e:
-                print(f"⚠ 设置执行权限失败: {e}")
+                print(f"[!] Failed to set execution permission: {e}")
 
     return success
 
@@ -343,7 +344,7 @@ def download_library(force=False):
     print(f"  需要文件: {lib_filename}")
 
     if lib_filename is None:
-        print(f"\n✗ 不支持的操作系统: {system}")
+        print(f"\n[-] Unsupported OS: {system}")
         return False
 
     # 获取安装目录
@@ -354,23 +355,23 @@ def download_library(force=False):
 
     # 检查本地文件是否已存在
     if dest_path.exists():
-        print(f"\n✓ 库文件已存在: {dest_path}")
+        print(f"\n[+] Library file exists: {dest_path}")
         file_size = dest_path.stat().st_size
-        print(f"  文件大小: {file_size:,} 字节")
+        print(f"  File size: {file_size:,} bytes")
         if not force:
-            print("✓ 跳过下载")
+            print("[+] Skip download")
             return True
 
     # 获取下载地址
     url = LIBRARY_URLS.get(platform_key)
     if not url or url is None:
-        print(f"\n⚠️  该平台暂未提供自动下载: {platform_key}")
-        print(f"\n提示:")
-        print(f"  1. 请手动下载 {lib_filename}")
-        print(f"  2. 将文件放置到: {install_dir}")
-        print(f"  3. 或联系开发者获取该平台版本")
-        print(f"\nQQ 群: 751406884, 545120699, 170902713, 616787804")
-        print(f"官网: https://esunny.vip")
+        print(f"\n[!] Platform not supported for auto-download: {platform_key}")
+        print(f"\nTips:")
+        print(f"  1. Please manually download {lib_filename}")
+        print(f"  2. Place the file to: {install_dir}")
+        print(f"  3. Or contact developer for this platform version")
+        print(f"\nQQ Group: 751406884, 545120699, 170902713, 616787804")
+        print(f"Website: https://esunny.vip")
         return False
 
     # 如果强制下载，询问用户
@@ -400,9 +401,9 @@ def download_library(force=False):
                 if dest_path.exists():
                     dest_path.unlink()
                 temp_path.rename(dest_path)
-                print(f"✓ 文件已重命名为: {lib_filename}")
+                print(f"[+] File renamed to: {lib_filename}")
             except Exception as e:
-                print(f"⚠ 重命名失败: {e}")
+                print(f"[!] Rename failed: {e}")
                 return False
     else:
         success = download_file(url, dest_path)
@@ -412,19 +413,19 @@ def download_library(force=False):
         if platform.system().lower() in ["linux", "darwin"]:
             try:
                 os.chmod(dest_path, 0o755)
-                print(f"✓ 已设置执行权限")
+                print(f"[+] Execution permission set")
             except Exception as e:
-                print(f"⚠ 设置执行权限失败: {e}")
+                print(f"[!] Failed to set execution permission: {e}")
 
         print("\n" + "=" * 60)
-        print("✓ 库文件下载并安装成功!")
+        print("[+] Library file downloaded and installed successfully!")
         print("=" * 60)
         return True
     else:
         print("\n" + "=" * 60)
-        print("✗ 库文件下载失败")
+        print("[-] Library file download failed")
         print("=" * 60)
-        print(f"\n请手动下载 {lib_filename} 到:")
+        print(f"\nPlease manually download {lib_filename} to:")
         print(f"  {install_dir}")
         return False
 
