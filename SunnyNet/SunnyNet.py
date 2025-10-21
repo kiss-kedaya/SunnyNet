@@ -12,12 +12,12 @@ from .tools import check_function_signature
 
 
 def Version():
-    """ 获取SunnyNet DLL版本 """
+    """获取SunnyNet DLL版本"""
     return SunnyDLL.PointerToText(SunnyDLL.DLLSunny.GetSunnyVersion())
 
 
 class SunnyNet:
-    """ SunnyNet网络中间件 """
+    """SunnyNet网络中间件"""
 
     # 以下是常量信息
     """ 规则内走TCP """
@@ -32,28 +32,68 @@ class SunnyNet:
     CertRules_Response = 3
 
     def __init__(self):
-        """ 创建Sunny中间件对象, 可创建多个实例 """
-        self.__ws_callback = SunnyDLL.WsCallback(self.__ws_callback__)
-        self.__tcp_callback = SunnyDLL.TcpCallback(self.__tcp_callback__)
-        self.__http_callback = SunnyDLL.HttpCallback(self.__http_callback__)
-        self.__udp_callback = SunnyDLL.UDPCallback(self.__udp_callback__)
-        self.__ScriptLogCallback = SunnyDLL.ScriptLogCallback(self.__ScriptLogCallback__)
-        self.__ScriptCodeCallback = SunnyDLL.ScriptCodeCallback(self.__ScriptCodeCallback__)
+        """创建Sunny中间件对象, 可创建多个实例"""
+        self.__context = None  # 先初始化为 None，防止析构时出错
 
-        self.__ws_callback__py = None
-        self.__tcp_callback__py = None
-        self.__http_callback__py = None
-        self.__udp_callback__py = None
-        self.__ScriptLogCallback__py = None
-        self.__ScriptCodeCallback__py = None
+        try:
+            # 确保库已加载，这会初始化所有回调类型
+            if not SunnyDLL._load_library():
+                raise RuntimeError(f"库文件加载失败: {SunnyDLL._library_error}")
 
-        self.__context = SunnyDLL.DLLSunny.CreateSunnyNet()
+            # 现在回调类型应该已经被初始化了
+            if SunnyDLL.WsCallback is None:
+                raise RuntimeError("WsCallback 未初始化")
+            if SunnyDLL.TcpCallback is None:
+                raise RuntimeError("TcpCallback 未初始化")
+            if SunnyDLL.HttpCallback is None:
+                raise RuntimeError("HttpCallback 未初始化")
+            if SunnyDLL.UDPCallback is None:
+                raise RuntimeError("UDPCallback 未初始化")
+            if SunnyDLL.ScriptLogCallback is None:
+                raise RuntimeError("ScriptLogCallback 未初始化")
+            if SunnyDLL.ScriptCodeCallback is None:
+                raise RuntimeError("ScriptCodeCallback 未初始化")
+
+            self.__ws_callback = SunnyDLL.WsCallback(self.__ws_callback__)
+            self.__tcp_callback = SunnyDLL.TcpCallback(self.__tcp_callback__)
+            self.__http_callback = SunnyDLL.HttpCallback(self.__http_callback__)
+            self.__udp_callback = SunnyDLL.UDPCallback(self.__udp_callback__)
+            self.__ScriptLogCallback = SunnyDLL.ScriptLogCallback(
+                self.__ScriptLogCallback__
+            )
+            self.__ScriptCodeCallback = SunnyDLL.ScriptCodeCallback(
+                self.__ScriptCodeCallback__
+            )
+
+            self.__ws_callback__py = None
+            self.__tcp_callback__py = None
+            self.__http_callback__py = None
+            self.__udp_callback__py = None
+            self.__ScriptLogCallback__py = None
+            self.__ScriptCodeCallback__py = None
+
+            # 创建 SunnyNet 上下文
+            context_result = SunnyDLL.DLLSunny.CreateSunnyNet()
+            if context_result is None:
+                raise RuntimeError("SunnyNet 初始化失败: CreateSunnyNet 返回 None")
+
+            self.__context = context_result
+
+        except Exception as e:
+            self.__context = None
+            raise RuntimeError(f"SunnyNet 初始化失败: {str(e)}") from e
 
     def __del__(self):
-        """ 释放SunnyNet资源 """
-        SunnyDLL.DLLSunny.ReleaseSunnyNet(self.__context)
+        """释放SunnyNet资源"""
+        if hasattr(self, "_SunnyNet__context") and self.__context is not None:
+            try:
+                SunnyDLL.DLLSunny.ReleaseSunnyNet(self.__context)
+            except Exception:
+                pass  # 忽略析构时的错误
 
-    def __http_callback__(self, SunnyContext, TheologyID, MessageId, EventType, Method, URL, Error, pid):
+    def __http_callback__(
+        self, SunnyContext, TheologyID, MessageId, EventType, Method, URL, Error, pid
+    ):
         if self.__http_callback__py is None:
             return
         _SunnyContext = PtrToInt(SunnyContext)
@@ -64,10 +104,30 @@ class SunnyNet:
         _pid = PtrToInt(pid)
         _TheologyID = PtrToInt(TheologyID)
         _MessageId = PtrToInt(MessageId)
-        obj = HTTPEvent(_SunnyContext, _TheologyID, _MessageId, _EventType, _Method, _URL, _Error, _pid)
+        obj = HTTPEvent(
+            _SunnyContext,
+            _TheologyID,
+            _MessageId,
+            _EventType,
+            _Method,
+            _URL,
+            _Error,
+            _pid,
+        )
         self.__http_callback__py(obj)
 
-    def __tcp_callback__(self, SunnyContext, LocalAddr, RemoteAddr, EventType, MessageId, data, ln, TheologyID, pid):
+    def __tcp_callback__(
+        self,
+        SunnyContext,
+        LocalAddr,
+        RemoteAddr,
+        EventType,
+        MessageId,
+        data,
+        ln,
+        TheologyID,
+        pid,
+    ):
         if self.__tcp_callback__py is None:
             return
         _SunnyContext = PtrToInt(SunnyContext)
@@ -78,10 +138,21 @@ class SunnyNet:
         _TheologyID = PtrToInt(TheologyID)
         _MessageId = PtrToInt(MessageId)
         _bs = SunnyDLL.PtrToByte(data, 0, ln)
-        obj = TCPEvent(_SunnyContext, _LocalAddr, _RemoteAddr, _TheologyID, _MessageId, _EventType, _pid, _bs)
+        obj = TCPEvent(
+            _SunnyContext,
+            _LocalAddr,
+            _RemoteAddr,
+            _TheologyID,
+            _MessageId,
+            _EventType,
+            _pid,
+            _bs,
+        )
         self.__tcp_callback__py(obj)
 
-    def __udp_callback__(self, SunnyContext, LocalAddr, RemoteAddr, EventType, MessageId, TheologyID, pid):
+    def __udp_callback__(
+        self, SunnyContext, LocalAddr, RemoteAddr, EventType, MessageId, TheologyID, pid
+    ):
         if self.__udp_callback__py is None:
             return
         _SunnyContext = PtrToInt(SunnyContext)
@@ -91,10 +162,20 @@ class SunnyNet:
         _RemoteAddr = SunnyDLL.BytesToText(RemoteAddr)
         _TheologyID = PtrToInt(TheologyID)
         _MessageId = PtrToInt(MessageId)
-        obj = UDPEvent(_SunnyContext, _LocalAddr, _RemoteAddr, _TheologyID, _MessageId, _EventType, _pid)
+        obj = UDPEvent(
+            _SunnyContext,
+            _LocalAddr,
+            _RemoteAddr,
+            _TheologyID,
+            _MessageId,
+            _EventType,
+            _pid,
+        )
         self.__udp_callback__py(obj)
 
-    def __ws_callback__(self, SunnyContext, TheologyID, MessageId, EventType, Method, URL, pid, wsType):
+    def __ws_callback__(
+        self, SunnyContext, TheologyID, MessageId, EventType, Method, URL, pid, wsType
+    ):
         if self.__ws_callback__py is None:
             return
         _SunnyContext = PtrToInt(SunnyContext)
@@ -105,7 +186,16 @@ class SunnyNet:
         _TheologyID = PtrToInt(TheologyID)
         _MessageId = PtrToInt(MessageId)
         _wsType = PtrToInt(wsType)
-        obj = WebSocketEvent(_SunnyContext, _TheologyID, _MessageId, _EventType, _Method, _URL, _pid, _wsType)
+        obj = WebSocketEvent(
+            _SunnyContext,
+            _TheologyID,
+            _MessageId,
+            _EventType,
+            _Method,
+            _URL,
+            _pid,
+            _wsType,
+        )
         self.__ws_callback__py(obj)
 
     def __ScriptLogCallback__(self, LogInfo):
@@ -121,17 +211,20 @@ class SunnyNet:
             return
         buff = SunnyDLL.PtrToByte(code, 0, l)
         try:
-            ss = buff.decode('utf-8')
+            ss = buff.decode("utf-8")
         except:
-            ss = buff.decode('gbk')
+            ss = buff.decode("gbk")
         self.__ScriptCodeCallback__py(ss)
 
-    def set_callback(self, http_callback: Callable[[HTTPEvent], None] = None,
-                     tcp_callback: Callable[[TCPEvent], None] = None,
-                     ws_callback: Callable[[WebSocketEvent], None] = None,
-                     udp_callback: Callable[[UDPEvent], None] = None,
-                     ScriptLogCallback: Callable[[str], None] = None,
-                     ScriptCodeCallback: Callable[[str], None] = None) -> None:
+    def set_callback(
+        self,
+        http_callback: Callable[[HTTPEvent], None] = None,
+        tcp_callback: Callable[[TCPEvent], None] = None,
+        ws_callback: Callable[[WebSocketEvent], None] = None,
+        udp_callback: Callable[[UDPEvent], None] = None,
+        ScriptLogCallback: Callable[[str], None] = None,
+        ScriptCodeCallback: Callable[[str], None] = None,
+    ) -> None:
         """
         设置回调函数
         :param http_callback: HTTP回调函数
@@ -142,17 +235,29 @@ class SunnyNet:
         :param ScriptCodeCallback: 脚本代码保存回调 需接收一个 str 参数
         """
         if not check_function_signature(ScriptCodeCallback, (str,), None):
-            raise TypeError(f"Callback function type error {type(ScriptCodeCallback).__name__}")
+            raise TypeError(
+                f"Callback function type error {type(ScriptCodeCallback).__name__}"
+            )
         if not check_function_signature(ScriptLogCallback, (str,), None):
-            raise TypeError(f"Callback function type error {type(ScriptLogCallback).__name__}")
+            raise TypeError(
+                f"Callback function type error {type(ScriptLogCallback).__name__}"
+            )
         if not check_function_signature(http_callback, (HTTPEvent,), None):
-            raise TypeError(f"Callback function type error {type(http_callback).__name__}")
+            raise TypeError(
+                f"Callback function type error {type(http_callback).__name__}"
+            )
         if not check_function_signature(tcp_callback, (TCPEvent,), None):
-            raise TypeError(f"Callback function type error {type(tcp_callback).__name__}")
+            raise TypeError(
+                f"Callback function type error {type(tcp_callback).__name__}"
+            )
         if not check_function_signature(udp_callback, (UDPEvent,), None):
-            raise TypeError(f"Callback function type error {type(udp_callback).__name__}")
+            raise TypeError(
+                f"Callback function type error {type(udp_callback).__name__}"
+            )
         if not check_function_signature(ws_callback, (WebSocketEvent,), None):
-            raise TypeError(f"Callback function type error {type(ws_callback).__name__}")
+            raise TypeError(
+                f"Callback function type error {type(ws_callback).__name__}"
+            )
         self.__ws_callback__py = ws_callback
         self.__tcp_callback__py = tcp_callback
         self.__http_callback__py = http_callback
@@ -161,9 +266,7 @@ class SunnyNet:
         self.__ScriptCodeCallback__py = ScriptCodeCallback
 
         SunnyDLL.DLLSunny.SetScriptCall(
-            self.__context,
-            self.__ScriptLogCallback,
-            self.__ScriptCodeCallback
+            self.__context, self.__ScriptLogCallback, self.__ScriptCodeCallback
         )
 
         SunnyDLL.DLLSunny.SunnyNetSetCallback(
@@ -171,11 +274,11 @@ class SunnyNet:
             self.__http_callback,
             self.__tcp_callback,
             self.__ws_callback,
-            self.__udp_callback
+            self.__udp_callback,
         )
 
     def context(self) -> int:
-        """ 获取当前Sunny中间件的上下文 """
+        """获取当前Sunny中间件的上下文"""
         return PtrToInt(self.__context)
 
     def random_ja3(self, enable) -> bool:
@@ -189,13 +292,22 @@ class SunnyNet:
         return bool(SunnyDLL.DLLSunny.SetRandomTLS(self.__context, enable))
 
     def install_cert_to_system(self) -> bool:
-        """ 安装中间件的证书到系统中，返回安装结果文本 """
-        err = SunnyDLL.PointerToText(SunnyDLL.DLLSunny.SunnyNetInstallCert(self.__context))
-        return any(x in err for x in (
-            "添加到存储", "已经在存储中", "already in store", "CertUtil: -addstore command completed successfully."))
+        """安装中间件的证书到系统中，返回安装结果文本"""
+        err = SunnyDLL.PointerToText(
+            SunnyDLL.DLLSunny.SunnyNetInstallCert(self.__context)
+        )
+        return any(
+            x in err
+            for x in (
+                "添加到存储",
+                "已经在存储中",
+                "already in store",
+                "CertUtil: -addstore command completed successfully.",
+            )
+        )
 
     def set_port(self, port) -> None:
-        """ 在启动之前调用，设置中间件的端口 """
+        """在启动之前调用，设置中间件的端口"""
         if not isinstance(port, int):
             raise TypeError("参数类型错误：port 应为整数")
         SunnyDLL.DLLSunny.SunnyNetSetPort(self.__context, port)
@@ -213,11 +325,11 @@ class SunnyNet:
         return bool(SunnyDLL.DLLSunny.SetOutRouterIP(self.__context, ip))
 
     def export_cert(self) -> str:
-        """ 导出已设置的证书 """
+        """导出已设置的证书"""
         return SunnyDLL.PointerToText(SunnyDLL.DLLSunny.ExportCert(self.__context))
 
     def cancel_ie_proxy(self) -> None:
-        """ 取消已设置的IE代理 """
+        """取消已设置的IE代理"""
         SunnyDLL.DLLSunny.CancelIEProxy(self.__context)
 
     def set_dns_server(self, server_name: str) -> None:
@@ -227,7 +339,9 @@ class SunnyNet:
         """
         if not isinstance(server_name, str):
             raise TypeError("参数类型错误：server_name 应为字符串")
-        SunnyDLL.DLLSunny.SetDnsServer(self.__context, create_string_buffer(server_name.encode("utf-8")))
+        SunnyDLL.DLLSunny.SetDnsServer(
+            self.__context, create_string_buffer(server_name.encode("utf-8"))
+        )
 
     def must_tcp(self, enable: bool) -> None:
         """
@@ -258,7 +372,7 @@ class SunnyNet:
         SunnyDLL.DLLSunny.SunnyNetSocket5AddUser(
             self.__context,
             create_string_buffer(username.encode("utf-8")),
-            create_string_buffer(password.encode("utf-8"))
+            create_string_buffer(password.encode("utf-8")),
         )
 
     def verify_user_del(self, username: str) -> None:
@@ -271,11 +385,11 @@ class SunnyNet:
         SunnyDLL.DLLSunny.SunnyNetSocket5DelUser(self.__context, username)
 
     def start(self) -> bool:
-        """ 启动中间件，绑定端口 """
+        """启动中间件，绑定端口"""
         return bool(SunnyDLL.DLLSunny.SunnyNetStart(self.__context))
 
     def stop(self) -> None:
-        """ 停止中间件并关闭IE代理 """
+        """停止中间件并关闭IE代理"""
         self.cancel_ie_proxy()
         SunnyDLL.DLLSunny.SunnyNetClose(self.__context)
 
@@ -287,7 +401,9 @@ class SunnyNet:
         """
         if not isinstance(cert_manager, CertManager):
             raise TypeError("参数类型错误：cert_manager 应为 CertManager 对象")
-        result = SunnyDLL.DLLSunny.SunnyNetSetCert(self.__context, cert_manager.context())
+        result = SunnyDLL.DLLSunny.SunnyNetSetCert(
+            self.__context, cert_manager.context()
+        )
         return bool(result)
 
     def set_script_page(self, page: str) -> str:
@@ -298,7 +414,9 @@ class SunnyNet:
         """
         if not isinstance(page, str):
             raise TypeError("参数类型错误：page 应为字符串")
-        return SunnyDLL.PointerToText(SunnyDLL.DLLSunny.SetScriptPage(self.__context, page))
+        return SunnyDLL.PointerToText(
+            SunnyDLL.DLLSunny.SetScriptPage(self.__context, page)
+        )
 
     def is_script_code_supported(self) -> bool:
         """
@@ -320,7 +438,10 @@ class SunnyNet:
         except:
             data = script_code.encode("utf-8")
         return SunnyDLL.PointerToText(
-            SunnyDLL.DLLSunny.SetScriptPage(self.__context, create_string_buffer(data), len(data)))
+            SunnyDLL.DLLSunny.SetScriptPage(
+                self.__context, create_string_buffer(data), len(data)
+            )
+        )
 
     def process_add_name(self, process_name: str) -> None:
         """
@@ -329,7 +450,9 @@ class SunnyNet:
         """
         if not isinstance(process_name, str):
             raise TypeError("参数类型错误：process_name 应为字符串")
-        SunnyDLL.DLLSunny.ProcessAddName(self.__context, create_string_buffer(process_name.encode("utf-8")))
+        SunnyDLL.DLLSunny.ProcessAddName(
+            self.__context, create_string_buffer(process_name.encode("utf-8"))
+        )
 
     def process_del_name(self, process_name: str) -> None:
         """
@@ -338,7 +461,9 @@ class SunnyNet:
         """
         if not isinstance(process_name, str):
             raise TypeError("参数类型错误：process_name 应为字符串")
-        SunnyDLL.DLLSunny.ProcessDelName(self.__context, create_string_buffer(process_name.encode("utf-8")))
+        SunnyDLL.DLLSunny.ProcessDelName(
+            self.__context, create_string_buffer(process_name.encode("utf-8"))
+        )
 
     def process_add_pid(self, pid: int) -> None:
         """
@@ -371,11 +496,11 @@ class SunnyNet:
         SunnyDLL.DLLSunny.ProcessALLName(self.__context, enable, StopNetwork)
 
     def process_cancel_all(self) -> None:
-        """ 删除已设置的所有PID和进程名 """
+        """删除已设置的所有PID和进程名"""
         SunnyDLL.DLLSunny.ProcessCancelAll(self.__context)
 
     def error(self) -> str:
-        """ 获取中间件启动时的错误信息 """
+        """获取中间件启动时的错误信息"""
         return SunnyDLL.PointerToText(SunnyDLL.DLLSunny.SunnyNetError(self.__context))
 
     def set_http_request_max_update_length(self, max_update_length: int) -> bool:
@@ -386,7 +511,11 @@ class SunnyNet:
         """
         if not isinstance(max_update_length, int):
             raise TypeError("参数类型错误：max_update_length 应为整数")
-        return bool(SunnyDLL.DLLSunny.SetHTTPRequestMaxUpdateLength(self.__context, max_update_length))
+        return bool(
+            SunnyDLL.DLLSunny.SetHTTPRequestMaxUpdateLength(
+                self.__context, max_update_length
+            )
+        )
 
     def disable_tcp(self, disable: bool) -> bool:
         """
@@ -412,9 +541,9 @@ class SunnyNet:
         """
         取消设置的上游代理
         """
-        self.set_proxy("",0)
-        
-    def set_proxy(self, proxy_url: str,outTime:int) -> bool:
+        self.set_proxy("", 0)
+
+    def set_proxy(self, proxy_url: str, outTime: int) -> bool:
         """
         设置上游代理，仅支持S5代理或HTTP代理。
 
@@ -434,7 +563,11 @@ class SunnyNet:
             raise TypeError("参数类型错误：proxy_url 应为字符串")
         if not isinstance(outTime, int):
             raise TypeError("参数类型错误：outTime 应为 int")
-        return bool(SunnyDLL.DLLSunny.SetGlobalProxy(self.__context, create_string_buffer(proxy_url.encode("utf-8")),outTime))
+        return bool(
+            SunnyDLL.DLLSunny.SetGlobalProxy(
+                self.__context, create_string_buffer(proxy_url.encode("utf-8")), outTime
+            )
+        )
 
     def set_proxy_rules(self, regexp: str) -> bool:
         """
@@ -444,7 +577,11 @@ class SunnyNet:
         """
         if not isinstance(regexp, str):
             raise TypeError("参数类型错误：regexp 应为字符串")
-        return bool(SunnyDLL.DLLSunny.CompileProxyRegexp(self.__context, create_string_buffer(regexp.encode("utf-8"))))
+        return bool(
+            SunnyDLL.DLLSunny.CompileProxyRegexp(
+                self.__context, create_string_buffer(regexp.encode("utf-8"))
+            )
+        )
 
     def set_must_tcp_regexp(self, regexp: str, rules_allow: bool) -> bool:
         """
@@ -458,12 +595,15 @@ class SunnyNet:
         if not isinstance(rules_allow, bool):
             raise TypeError("参数类型错误：rules_allow 应为布尔值")
         return bool(
-            SunnyDLL.DLLSunny.SetMustTcpRegexp(self.__context, create_string_buffer(regexp.encode("utf-8")),
-                                               rules_allow)
+            SunnyDLL.DLLSunny.SetMustTcpRegexp(
+                self.__context,
+                create_string_buffer(regexp.encode("utf-8")),
+                rules_allow,
+            )
         )
 
     def set_ie_proxy(self) -> None:
-        """ 将当前绑定的端口号设置为当前IE代理 """
+        """将当前绑定的端口号设置为当前IE代理"""
         SunnyDLL.DLLSunny.SetIeProxy(self.__context)
 
     def open_drive(self, is_nfapi_dev: bool) -> bool:
@@ -477,10 +617,12 @@ class SunnyNet:
         return bool(SunnyDLL.DLLSunny.OpenDrive(self.__context, is_nfapi_dev))
 
     def un_drive(self) -> bool:
-        """ 卸载驱动（仅在Windows上有效，需管理员权限）,如果卸载成功，会立即重启系统，只要没有重启系统，即为失败 """
+        """卸载驱动（仅在Windows上有效，需管理员权限）,如果卸载成功，会立即重启系统，只要没有重启系统，即为失败"""
         return bool(SunnyDLL.DLLSunny.UnDrive(self.__context))
 
-    def add_http_certRules(self, host: str, cert_manager: CertManager, rules: int) -> None:
+    def add_http_certRules(
+        self, host: str, cert_manager: CertManager, rules: int
+    ) -> None:
         """
         添加双向认证的证书
         :param host: 主机名
@@ -494,9 +636,7 @@ class SunnyNet:
         if not isinstance(rules, int):
             raise TypeError("参数类型错误：rules 应为整数")
         SunnyDLL.DLLSunny.AddHttpCertificate(
-            create_string_buffer(bytes(host, 'utf-8')),
-            cert_manager.context(),
-            rules
+            create_string_buffer(bytes(host, "utf-8")), cert_manager.context(), rules
         )
 
     def del_http_certRules(self, host: str) -> bool:
@@ -507,4 +647,8 @@ class SunnyNet:
         """
         if not isinstance(host, str):
             raise TypeError("参数类型错误：host 应为字符串")
-        return bool(SunnyDLL.DLLSunny.DelHttpCertificate(create_string_buffer(host.encode("utf-8"))))
+        return bool(
+            SunnyDLL.DLLSunny.DelHttpCertificate(
+                create_string_buffer(host.encode("utf-8"))
+            )
+        )

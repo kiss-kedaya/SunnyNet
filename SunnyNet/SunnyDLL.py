@@ -186,7 +186,18 @@ class LibSunny:
     def __getattr__(self, name):
         if not _load_library():
             raise RuntimeError(f"库文件未加载: {_library_error}")
-        func = getattr(lib, name)
+
+        if lib is None:
+            raise RuntimeError("库对象为 None，库文件加载失败")
+
+        try:
+            func = getattr(lib, name)
+        except AttributeError:
+            raise AttributeError(f"库文件中不存在函数: {name}")
+
+        if func is None:
+            raise RuntimeError(f"函数 {name} 为 None")
+
         func.restype = ctypes.POINTER(ctypes.c_int)
         return func
 
