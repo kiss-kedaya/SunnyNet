@@ -21,11 +21,12 @@ LIBRARY_URLS = {
     "windows_64": f"{RELEASE_BASE}/SunnyNet64.dll",
     "windows_32": f"{RELEASE_BASE}/SunnyNet.dll",
     # Linux 平台 - 从 GitHub Releases 下载 ✅
-    # 重命名文件以区分架构
-    "linux_x86_64": f"{RELEASE_BASE}/libSunnyNet-x86.so",  # x86_64 架构
-    "linux_aarch64": f"{RELEASE_BASE}/libSunnyNet-arm64.so",  # ARM64 架构
-    "linux_armv7l": f"{RELEASE_BASE}/libSunnyNet.so",  # ARM 32位
-    "linux_64": f"{RELEASE_BASE}/libSunnyNet-arm64.so",  # 保留兼容（已废弃）
+    # 使用 Releases 中的实际文件名
+    "linux_x86_64": f"{RELEASE_BASE}/libSunnyNet64-x86.so",  # x86_64 架构（64位）
+    "linux_aarch64": f"{RELEASE_BASE}/libSunnyNet-arm64-v8a.so",  # ARM64 架构
+    "linux_armv7l": f"{RELEASE_BASE}/libSunnyNet-armeabi-v7a.so",  # ARM 32位
+    "linux_i686": f"{RELEASE_BASE}/libSunnyNet-x86.so",  # x86 32位
+    "linux_64": f"{RELEASE_BASE}/libSunnyNet-arm64-v8a.so",  # 保留兼容（已废弃）
     "linux_32": f"{RELEASE_BASE}/libSunnyNet-x86.so",  # 保留兼容
     # macOS 平台
     "darwin_64": None,  # 暂未提供 macOS 版本

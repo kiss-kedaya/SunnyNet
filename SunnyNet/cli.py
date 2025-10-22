@@ -41,18 +41,22 @@ def install_command(args):
         # Linux 需要区分 CPU 架构
         if system == "linux":
             machine = platform.machine().lower()
-            # x86_64, aarch64, armv7l 等
+            # 根据 CPU 架构返回对应的平台键
             if machine in ["x86_64", "amd64"]:
-                return "linux_x86_64"
+                return "linux_x86_64"  # 64位 x86
             elif machine in ["aarch64", "arm64"]:
-                return "linux_aarch64"
-            elif machine.startswith("arm"):
-                return "linux_armv7l"
+                return "linux_aarch64"  # 64位 ARM
+            elif machine in ["armv7l", "armv7"]:
+                return "linux_armv7l"  # 32位 ARM
+            elif machine in ["i386", "i686", "x86"]:
+                return "linux_i686"  # 32位 x86
             else:
-                # 降级到旧的检测方式
+                # 降级：根据位数返回默认值
                 is_64bit = struct.calcsize("P") == 8
-                arch = "64" if is_64bit else "32"
-                return f"{system}_{arch}"
+                if is_64bit:
+                    return "linux_x86_64"  # 默认 64位
+                else:
+                    return "linux_32"  # 默认 32位
         else:
             # Windows 和 macOS 使用简单的位数检测
             # 使用 struct.calcsize("P") 检测 Python 位数（最可靠的方法）

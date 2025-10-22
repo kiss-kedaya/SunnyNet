@@ -38,13 +38,14 @@ def get_release_url(mirror, filename):
         return f"{mirror}/{github_path}"
 
 
-# 库文件名映射
+# 库文件名映射（对应 GitHub Releases 中的实际文件名）
 LIBRARY_FILES = {
     "windows_64": "SunnyNet64.dll",
     "windows_32": "SunnyNet.dll",
-    "linux_x86_64": "libSunnyNet-x86.so",  # x86_64 架构
-    "linux_aarch64": "libSunnyNet-arm64.so",  # ARM64 架构
-    "linux_armv7l": "libSunnyNet.so",  # ARM 32位
+    "linux_x86_64": "libSunnyNet64-x86.so",  # x86_64 架构（64位）
+    "linux_aarch64": "libSunnyNet-arm64-v8a.so",  # ARM64 架构
+    "linux_armv7l": "libSunnyNet-armeabi-v7a.so",  # ARM 32位
+    "linux_i686": "libSunnyNet-x86.so",  # x86 32位
     "linux_32": "libSunnyNet-x86.so",  # 保留兼容
     "darwin_64": None,
     "darwin_32": None,
@@ -64,18 +65,22 @@ def get_platform_key():
     # Linux 需要区分 CPU 架构
     if system == "linux":
         machine = platform.machine().lower()
-        # x86_64, aarch64, armv7l 等
+        # 根据 CPU 架构返回对应的平台键
         if machine in ["x86_64", "amd64"]:
-            return "linux_x86_64"
+            return "linux_x86_64"  # 64位 x86
         elif machine in ["aarch64", "arm64"]:
-            return "linux_aarch64"
-        elif machine.startswith("arm"):
-            return "linux_armv7l"
+            return "linux_aarch64"  # 64位 ARM
+        elif machine in ["armv7l", "armv7"]:
+            return "linux_armv7l"  # 32位 ARM
+        elif machine in ["i386", "i686", "x86"]:
+            return "linux_i686"  # 32位 x86
         else:
-            # 降级到旧的检测方式
+            # 降级：根据位数返回默认值
             is_64bit = sys.maxsize > 2**31
-            arch = "64" if is_64bit else "32"
-            return f"{system}_{arch}"
+            if is_64bit:
+                return "linux_x86_64"  # 默认 64位
+            else:
+                return "linux_32"  # 默认 32位
     else:
         # Windows 和 macOS 使用简单的位数检测
         is_64bit = sys.maxsize > 2**31
