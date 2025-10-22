@@ -33,12 +33,6 @@ def __ScriptCodeCallback__(ScriptCode: str):
 def __httpCallback__(Conn: HTTPEvent):
     if Conn.get_event_type() == Conn.EVENT_TYPE_REQUEST:
         Conn.get_request().remove_compression_mark()
-        print(
-            "请求客户端IP："
-            + Conn.get_client_ip()
-            + "|"
-            + Conn.get_request().get_header("Meddyid")
-        )
         return
     elif Conn.get_event_type() == Conn.EVENT_TYPE_RESPONSE:
         ss = (
@@ -50,7 +44,7 @@ def __httpCallback__(Conn: HTTPEvent):
         try:
             ss += " 响应内容：" + Conn.get_response().body_auto_str()
         except:
-            ss += " -->> {响应内容:转字符串失败}请确认这是一个正常的字符串,你可以获取 使用 BodyAuto 函数 手动查看字节码,是否加密了？或者这是一张图片？"
+            ss += " -->> {响应内容:转字符串失败}"
         print(ss)
         return
     elif Conn.get_event_type() == Conn.EVENT_TYPE_ERROR:
@@ -252,8 +246,8 @@ def TestMultiPortWithFixedCert():
 
     # 获取脚本所在目录的绝对路径
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    cert_p12_file = os.path.join(script_dir, "sunny_cert.p12")  # P12 证书文件
-    cert_password = "sunny2025"  # P12 证书密码
+    cert_p12_file = os.path.join(script_dir, "kedaya666.p12")  # P12 证书文件
+    cert_password = "kedaya666"  # P12 证书密码
 
     print(f"\n[证书配置]")
     print(f"  证书文件路径: {cert_p12_file}")
@@ -303,7 +297,7 @@ def TestMultiPortWithFixedCert():
         # - organization: 组织名称（默认 Sunny）
         # - not_after: 有效期天数（默认 3650 天，即 10 年）
         print("  正在生成证书...")
-        if not cert_manager.create("SunnyProxy"):
+        if not cert_manager.create("Binance_Proxy", country="kedaya"):
             print("✗ 证书创建失败")
             return
 

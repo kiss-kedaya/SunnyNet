@@ -42,8 +42,10 @@ def get_release_url(mirror, filename):
 LIBRARY_FILES = {
     "windows_64": "SunnyNet64.dll",
     "windows_32": "SunnyNet.dll",
-    "linux_64": "libSunnyNet-arm64.so",
-    "linux_32": "libSunnyNet-x86.so",
+    "linux_x86_64": "libSunnyNet-x86.so",  # x86_64 架构
+    "linux_aarch64": "libSunnyNet-arm64.so",  # ARM64 架构
+    "linux_armv7l": "libSunnyNet.so",  # ARM 32位
+    "linux_32": "libSunnyNet-x86.so",  # 保留兼容
     "darwin_64": None,
     "darwin_32": None,
 }
@@ -56,12 +58,29 @@ LIBRARY_URLS = {
 
 
 def get_platform_key():
-    """获取当前平台的标识符"""
+    """获取当前平台的标识符（包含 CPU 架构）"""
     system = platform.system().lower()
-    # 使用 sys.maxsize 更可靠地检测 Python 位数
-    is_64bit = sys.maxsize > 2**31
-    arch = "64" if is_64bit else "32"
-    return f"{system}_{arch}"
+
+    # Linux 需要区分 CPU 架构
+    if system == "linux":
+        machine = platform.machine().lower()
+        # x86_64, aarch64, armv7l 等
+        if machine in ["x86_64", "amd64"]:
+            return "linux_x86_64"
+        elif machine in ["aarch64", "arm64"]:
+            return "linux_aarch64"
+        elif machine.startswith("arm"):
+            return "linux_armv7l"
+        else:
+            # 降级到旧的检测方式
+            is_64bit = sys.maxsize > 2**31
+            arch = "64" if is_64bit else "32"
+            return f"{system}_{arch}"
+    else:
+        # Windows 和 macOS 使用简单的位数检测
+        is_64bit = sys.maxsize > 2**31
+        arch = "64" if is_64bit else "32"
+        return f"{system}_{arch}"
 
 
 def get_library_filename():

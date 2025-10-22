@@ -37,11 +37,29 @@ def install_command(args):
         import struct
 
         system = platform.system().lower()
-        # 使用 struct.calcsize("P") 检测 Python 位数（最可靠的方法）
-        # P = 指针大小，8字节=64位，4字节=32位
-        is_64bit = struct.calcsize("P") == 8
-        arch = "64" if is_64bit else "32"
-        return f"{system}_{arch}"
+
+        # Linux 需要区分 CPU 架构
+        if system == "linux":
+            machine = platform.machine().lower()
+            # x86_64, aarch64, armv7l 等
+            if machine in ["x86_64", "amd64"]:
+                return "linux_x86_64"
+            elif machine in ["aarch64", "arm64"]:
+                return "linux_aarch64"
+            elif machine.startswith("arm"):
+                return "linux_armv7l"
+            else:
+                # 降级到旧的检测方式
+                is_64bit = struct.calcsize("P") == 8
+                arch = "64" if is_64bit else "32"
+                return f"{system}_{arch}"
+        else:
+            # Windows 和 macOS 使用简单的位数检测
+            # 使用 struct.calcsize("P") 检测 Python 位数（最可靠的方法）
+            # P = 指针大小，8字节=64位，4字节=32位
+            is_64bit = struct.calcsize("P") == 8
+            arch = "64" if is_64bit else "32"
+            return f"{system}_{arch}"
 
     def get_library_filename():
         import struct

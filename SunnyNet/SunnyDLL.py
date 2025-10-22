@@ -37,8 +37,20 @@ def _get_library_path():
     if system == "windows":
         lib_name = "SunnyNet64.dll" if is_64bit else "SunnyNet.dll"
     elif system == "linux":
-        # Linux 文件名为 libSunnyNet.so
-        lib_name = "libSunnyNet.so"
+        # Linux 需要区分 CPU 架构
+        machine = platform.machine().lower()
+        if machine in ["x86_64", "amd64"]:
+            # x86_64 架构 - 优先查找 libSunnyNet-x86.so，其次 libSunnyNet.so
+            lib_name = "libSunnyNet.so"  # 统一文件名
+        elif machine in ["aarch64", "arm64"]:
+            # ARM64 架构
+            lib_name = "libSunnyNet.so"
+        elif machine.startswith("arm"):
+            # ARM 32位
+            lib_name = "libSunnyNet.so"
+        else:
+            # 默认
+            lib_name = "libSunnyNet.so"
     elif system == "darwin":  # macOS
         lib_name = "SunnyNet64.dylib" if is_64bit else "SunnyNet.dylib"
     else:
